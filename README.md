@@ -21,6 +21,7 @@ Pros
 + no need to install anything
 + use it basically distro-agnostic
 + works with [Firejail](https://github.com/netblue30/firejail) to help alleviate the trust issue
+
 Cons
 - requires trust, if the AppImage is downloaded and used instead of self-created by this open-source script
 - it may have some glitches
