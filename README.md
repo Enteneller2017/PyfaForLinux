@@ -14,12 +14,14 @@ Everything needed to run Pyfa is inside a single file. It should run on any regu
 - double click or run the file via terminal. Enjoy!
 
 # Pros and Cons
+Pros
 + a single file
 + easy to use, easy to remove
 + no root capabilities needed
 + no need to install anything
 + use it basically distro-agnostic
 + works with [Firejail](https://github.com/netblue30/firejail) to help alleviate the trust issue
+Cons
 - requires trust, if the AppImage is downloaded and used instead of self-created by this open-source script
 - it may have some glitches
 
