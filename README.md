@@ -4,7 +4,7 @@ This is a bash-shell script to create an [AppImage](https://github.com/AppImage)
 Everything needed to run Pyfa is inside a single file. It should run on any regular Linux distribution. The resulting .appimages were tested on Solus, Ubuntu and Fedora.   
 
 # How to use?
-- create a folder for Pyfa via: git clone https://github.com/pyfa-org/Pyfa
+- create a folder for Pyfa, then clone it via: git clone https://github.com/pyfa-org/Pyfa
 - Download or copy and paste the contents of the script into a textfile
 - put it into the root folder of Pyfa (the one that contains pyfa.py and folder names like gui, scripts, utils)
 - make the script executable (e.g. open a terminal, navigate towards Pyfa and do: chmod +x AppImageCreationScript.sh)
