@@ -1,0 +1,94 @@
+#! /bin/bash
+
+set -x
+set -e
+
+# use RAM disk if possible
+if [ "$CI" == "" ] && [ -d /dev/shm ]; then
+    TEMP_BASE=/dev/shm
+else
+    TEMP_BASE=/tmp
+fi
+
+BUILD_DIR=$(mktemp -d -p "$TEMP_BASE" pyfa-build-XXXXXX)
+
+cleanup () {
+    if [ -d "$BUILD_DIR" ]; then
+        rm -rf "$BUILD_DIR"
+    fi
+}
+
+trap cleanup EXIT
+
+# store repo root as variable
+REPO_ROOT=$(readlink -f $(dirname $(dirname "$0")))
+OLD_CWD=$(readlink -f .)
+
+pushd "$BUILD_DIR"
+
+wget https://github.com/TheAssassin/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+wget https://raw.githubusercontent.com/linuxdeploy/linuxdeploy-plugin-conda/master/linuxdeploy-plugin-conda.sh
+
+chmod +x linuxdeploy*.AppImage
+chmod +x linuxdeploy*.sh
+
+export VERSION=$(cd "$REPO_ROOT" && python3 scripts/dump_version.py)
+
+# install pre-built wxPython first, so it doesn't have to be built from source
+# pip will just ignore the dependency in requirements.txt once it's installed
+export CONDA_CHANNELS="ufechner"
+export CONDA_PACKAGES="sdl"
+export PIP_REQUIREMENTS="https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-18.04/wxPython-4.0.4-cp37-cp37m-linux_x86_64.whl -r requirements.txt"
+export PIP_WORKDIR="$REPO_ROOT"
+
+# copy icons so they can be named properly, then pass them to linuxdeploy to make it sort them into the correct places
+# they need to be put into two separate directories, as they will need the same filename
+mkdir -p icons/{32,64}
+cp "$REPO_ROOT"/imgs/gui/pyfa.png icons/32/pyfa.png
+cp "$REPO_ROOT"/imgs/gui/pyfa64.png icons/64/pyfa.png
+
+# write minimalistic working desktop file to build dir
+cat > pyfa.desktop <<\EOF
+[Desktop Entry]
+Name=pyfa
+Comment=Python fitting assistant, cross-platform fitting tool for EVE Online
+Type=Application
+Exec=pyfa
+Icon=pyfa
+Categories=Utility;Game;
+EOF
+
+# provide custom AppRun script that calls python3 correctly
+cat > AppRun.sh <<\EOF
+#! /bin/bash
+
+this_dir=$(dirname "$0")
+# add own bin dir as fallback
+# might come in handy if readelf binary is missing on the system (not sure if that's even possible, though)
+export PATH="$PATH":"$this_dir"/usr/bin
+
+# make sure libraries used by wxPython are found
+export LD_LIBRARY_PATH="$this_dir"/usr/conda/lib:"$this_dir"/usr/conda/x86_64-conda_cos6-linux-gnu/sysroot/usr/lib64/:"$this_dir"/usr/lib
+
+"$this_dir"/usr/bin/python3 "$this_dir"/pyfa/pyfa.py
+EOF
+chmod +x AppRun.sh
+
+# note for self: linuxdeploy-x86_64 should just define ARCH
+export ARCH=x86_64
+
+# create AppDir with Python env (through conda plugin), preparing as much as possible
+# AppImage will be built laterO
+./linuxdeploy-x86_64.AppImage --appdir AppDir --plugin conda \
+    -i icons/32/pyfa.png -i icons/64/pyfa.png -d pyfa.desktop \
+    -l /usr/lib/x86_64-linux-gnu/libwebkitgtk-3.0.so.0 \
+    --custom-apprun AppRun.sh
+
+# copy Pyfa's files (excluding some files)
+mkdir AppDir/pyfa
+rsync -a --exclude '*.AppImage' --exclude '*.git' "$REPO_ROOT"/ AppDir/pyfa/
+
+# call linuxdeploy again to make AppImage
+./linuxdeploy-x86_64.AppImage --appdir AppDir --output appimage
+
+mv pyfa*.AppImage "$OLD_CWD"
